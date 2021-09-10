@@ -1,0 +1,9 @@
+.cproject
+.project
+.settings/
+bin/
+obj/
+tmp/
+build/
+libam.a
+libam.so
