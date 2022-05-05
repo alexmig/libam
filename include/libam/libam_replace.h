@@ -15,24 +15,26 @@
 #define ARRAY_SIZE(x) (sizeof((x))/sizeof((x)[0]))
 #endif
 
-#ifndef __FILENAME__
-#define __FILENAME__		(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#endif
-
-/* __LINE__ in string form */
-#ifndef __LINE_STRING__
-#ifndef __LINE_STRING3__
-#define __LINE_STRING3__(x)	#x
-#endif
-#ifndef __LINE_STRING2__
-#define __LINE_STRING2__(x)	__LINE_STRING3__(x)
-#endif
-#define __LINE_STRING__		__LINE_STRING2__(__LINE__)
-#endif
-
 #ifndef __LOCATION__
-#define __LOCATION__		__FILENAME__ ":" __LINE_STRING__
+#ifndef __FLSTRING1__
+#ifndef __FLSTRING2__
+#define __FLSTRING2__(file, line) file ":" #line
 #endif
+#define __FLSTRING1__(file, line) __FLSTRING2__(file, line)
+#endif
+
+#ifndef __FILENAME__
+#ifndef __FLSTRING__
+#define __FLSTRING__ __FLSTRING1__(__FILE__, __LINE__)
+#endif
+#define __LOCATION__		(strrchr(__FLSTRING__, '/') ? strrchr(__FLSTRING__, '/') + 1 : __FLSTRING__)
+
+#else /* __FILENAME__ exists */
+
+#define __LOCATION__		__FLSTRING1__(__FILENAME__, __LINE__)
+#endif
+#endif
+
 
 #if (__GNUC__ >= 3)
 #ifndef LIKELY
