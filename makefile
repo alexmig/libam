@@ -40,7 +40,7 @@ CC := ${CC.${COMPILER}}
 LD := ${LD.${COMPILER}}
 AR := ${AR.${COMPILER}}
 
-CFLAGS.gcc.all := -std=gnu17 -W{all,extra,error} -I ${include_dir} -pthread
+CFLAGS.gcc.all := -std=gnu17 -Wall -Wextra -Werror -I ${include_dir} -pthread
 CFLAGS.gcc.debug := -g -Og -DDEBUG
 CFLAGS.gcc.release := -O3 -DNDEBUG
 CFLAGS.gcc := ${CFLAGS.gcc.all} ${CFLAGS.gcc.${BUILD}}
@@ -50,12 +50,12 @@ CFLAGS.clang.debug := -g -Og -DDEBUG
 CFLAGS.clang.release := -O3 -DNDEBUG
 CFLAGS.clang := ${CFLAGS.clang.all} ${CFLAGS.clang.${BUILD}}
 
-CXXFLAGS.gcc.all := -std=gnu++14 -W{all,extra,error} -I ${include_dir} -pthread
+CXXFLAGS.gcc.all := -std=gnu++14 -Wall -Wextra -Werror -I ${include_dir} -pthread
 CXXFLAGS.gcc.debug := -g -Og -DDEBUG
 CXXFLAGS.gcc.release := -O3 -DNDEBUG
 CXXFLAGS.gcc := ${CXXFLAGS.gcc.all} ${CXXFLAGS.gcc.${BUILD}}
 
-CXXFLAGS.clang.all := -std=gnu++14 -W{all,extra,error} -I ${include_dir} -pthread
+CXXFLAGS.clang.all := -std=gnu++14 -Wall -Wextra -Werror -I ${include_dir} -pthread
 CXXFLAGS.clang.debug := -g -Og -DDEBUG
 CXXFLAGS.clang.release := -O3 -DNDEBUG
 CXXFLAGS.clang := ${CXXFLAGS.clang.all} ${CXXFLAGS.clang.${BUILD}}
@@ -75,9 +75,13 @@ LINK.EXE = ${LD} -o $@ $(LDFLAGS) $(filter-out makefile,$^) $(LDLIBS)
 LINK.SO = ${LD} -fpic -shared -o $@.so $(LDFLAGS) $(filter-out makefile,$^) $(LDLIBS)
 LINK.A = ${AR} -rcs $@.a $(filter-out makefile,$^)
 
-all : ${build_dir} ${libraries:%=${build_dir}/%} ${exes:%=${build_dir}/%} ${library_tests:%=${build_dir}/%} ${library_tests:%=${build_dir}/run_%}
+all : ${build_dir} ${libraries:%=${build_dir}/%} ${exes:%=${build_dir}/%}
 
-test : ${library_tests:%=${build_dir}/%} ${library_tests:%=${build_dir}/run_%}
+test : ${build_dir} ${libraries:%=${build_dir}/%} ${exes:%=${build_dir}/%} ${library_tests:%=${build_dir}/%} ${library_tests:%=${build_dir}/run_%}
+
+tests : test
+
+check : test
 
 .SECONDEXPANSION:
 
