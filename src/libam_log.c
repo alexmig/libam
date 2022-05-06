@@ -13,7 +13,7 @@ void amlog_init(amlog_t* log, char* filename)
 	if (log == NULL)
 			return;
 	memcpy(log, &default_log, sizeof(default_log));
-	log->fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT);
+	log->fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
 	if (log->fd == -1) {
 		AMLOG_PREFIX(&default_log, "ERROR: Unable to open file '%s' for logging\n", filename);
 		log->fd = 0;
