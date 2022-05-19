@@ -369,11 +369,10 @@ static int amopts_print_opt(amopt_option_t* opn)
 	AMLOG_PLAIN(dlog, "--%-20s ", opn->form_long);
 
 	len = strnlen(opn->help_string, 256);
-	opn->help_string[len] = '\0';
 
 	while (len > 0) {
 		if (len <= max_help) {
-			AMLOG_PLAIN(dlog, "%s\n", help);
+			AMLOG_PLAIN(dlog, "%.*s\n", len, help);
 			return is_mandatory;
 		}
 

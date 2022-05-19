@@ -460,6 +460,8 @@ static int test_add(uint64_t elements)
 	amt3t_t* nodes = NULL;
 	amtree_t tree;
 
+	amtree_init(&tree);
+
 	if (elements == 0) {
 		printf("Can't carry out a test with no elements\n");
 		return 0;
@@ -497,6 +499,8 @@ static int test_del(uint64_t elements)
 	amtree_t tree_copy;
 	order_t iorder;
 	int rc = 0;
+
+	amtree_init(&tree);
 
 	if (elements == 0) {
 		printf("Can't carry out a test with no elements\n");
