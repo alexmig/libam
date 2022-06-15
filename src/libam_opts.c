@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "libam/libam_opts.h"
-#include "libam/libam_log.h"
 
 static int initialized = 0;
 static int is_problem[UINT8_MAX];

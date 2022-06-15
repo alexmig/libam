@@ -72,6 +72,18 @@ amrc_t amlog_sink_init();
 void amlog_sink_term();
 
 
+/* A handful of useful formatting functions */
+
+/* Convert a buffer to binary string */
+void amlog_hex(const void* buf, int length, char* output, int output_length);
+
+/* Convert buffer of binary data into dump format
+ * start_offset being x will result in the first line address to be aligned to x. Use 0 if unsure. */
+void amlog_dump(const void* buf, int length, char* output, int output_length, uint64_t start_offset);
+
+
+/* Default supplied sink */
+
 /* A default log sink that simply outputs lines to STDOUT is supplied here */
 void amlog_sink_dafault_stdout(amlog_sink_t* sink , void* user_data, const amlog_line_t* line);
 

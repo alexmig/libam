@@ -9,7 +9,6 @@
 #include <stdlib.h>
 
 #include "libam/libam_fdopers.h"
-#include "libam/libam_log.h"
 #include "libam/libam_replace.h"
 
 #ifdef DEBUG

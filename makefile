@@ -22,7 +22,7 @@ library_tests := ${library_tests_sources:${source_dir}/%.c=%}
 
 # ==== library
 libraries += libam
-objects.libam = libam_cqueue.o  libam_fdopers.o  libam_time.o libam_log.o  libam_opts.o  libam_stats.o  libam_tree.o libam_itree.o libam_hash.o libam_stack.o libam_lstack.o libam_pool.o libam_logsink.o
+objects.libam = libam_cqueue.o  libam_fdopers.o  libam_time.o libam_opts.o  libam_stats.o  libam_tree.o libam_itree.o libam_hash.o libam_stack.o libam_lstack.o libam_pool.o libam_logsink.o
 -include ${objects.libam:%.o=${build_dir}/%.d} # Include auto-generated dependencies.
 
 CXX.gcc := g++

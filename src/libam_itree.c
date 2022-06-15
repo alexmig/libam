@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "libam/libam_itree.h"
-#include "libam/libam_log.h"
 
 // Returns compare if equal, otherwise proper child (Can be NULL).
 static inline amitree_node_t* amitree_cmp(const amitree_node_t* targ,

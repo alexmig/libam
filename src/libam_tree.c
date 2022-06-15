@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "libam/libam_tree.h"
-#include "libam/libam_log.h"
 
 #if 0
 #include <stdio.h>

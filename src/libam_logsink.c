@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <ctype.h>
 
 #include "libam/libam_logsink.h"
 
@@ -208,6 +209,67 @@ amrc_t amlog_sink_init()
 void amlog_sink_term()
 {
 }
+
+/* Convert a buffer to binary string */
+void amlog_hex(const void* buf, int length, char* output, int output_length)
+{
+	uint8_t* p = (uint8_t*)buf;
+
+	while (length > 0 && output_length > 2) {
+		snprintf(output, 3, "%02x", *p);
+		p++;
+		length--;
+		output += 2;
+		output_length -= 2;
+	}
+	*output = '\0';
+}
+
+/* Convert buffer of binary data into dump format
+ * start_offset being x will result in the first line address to be aligned to x. Use 0 if unsure. */
+void amlog_dump(const void* buf, int length, char* output, int output_length, uint64_t start_offset)
+{
+	char hex[16*3 + 2], asc[16 + 2];
+	const uint8_t* ptr = buf;
+	const uint8_t* end = ptr + length;
+	uint8_t skip = (start_offset & 0xF);
+	uint64_t line_address = start_offset - skip;
+	uint64_t i, hi, ai;
+	int added;
+
+	for (; line_address < start_offset + length; line_address += 16) {
+		hi = 0;
+		ai = 0;
+		for (i = 0; i < 16; i++) {
+			if (i == 8) {
+				hex[hi++] = ' ';
+				asc[ai++] = ' ';
+			}
+
+			if (skip > 0 || ptr >= end) {
+				sprintf(&hex[hi], "   "); hi += 3;
+				asc[ai++] = ' ';
+				skip--;
+			}
+			else {
+				asc[ai++] = isprint(*ptr) ? *ptr : '.';
+				sprintf(&hex[hi], "%02x ", *ptr); hi += 3;
+				ptr++;
+			}
+		}
+		hex[hi] = '\0';
+		asc[ai] = '\0';
+		added = snprintf(output, output_length, "%06lx %s %s\n", line_address, hex, asc);
+		if (added >= output_length) {
+			output += output_length - 1;
+			output_length = 1;
+			break;
+		}
+	}
+
+	*output = '\0';
+}
+
 
 /* A default log sink that simply outputs lines to STDOUT is supplied */
 void amlog_sink_dafault_stdout(UNUSED amlog_sink_t* sink, UNUSED void* user_data, const amlog_line_t* line)
