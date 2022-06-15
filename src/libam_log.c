@@ -5,7 +5,7 @@
 #include <time.h>
 #include <ctype.h>
 
-#include "libam/libam_logsink.h"
+#include "libam/libam_log.h"
 
 #include "libam/libam_list.h"
 

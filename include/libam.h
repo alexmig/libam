@@ -11,7 +11,7 @@
 #include "libam/libam_opts.h"
 #include "libam/libam_time.h"
 #include "libam/libam_stats.h"
-#include "libam/libam_logsink.h"
+#include "libam/libam_log.h"
 #include "libam/libam_fdopers.h"
 #include "libam/libam_hash.h"
 #include "libam/libam_stack.h"
