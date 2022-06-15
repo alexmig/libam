@@ -211,7 +211,7 @@ void amlog_sink_term()
 }
 
 /* Convert a buffer to binary string */
-void amlog_hex(const void* buf, int length, char* output, int output_length)
+int amlog_hex(const void* buf, int length, char* output, int output_length)
 {
 	uint8_t* p = (uint8_t*)buf;
 
@@ -223,12 +223,14 @@ void amlog_hex(const void* buf, int length, char* output, int output_length)
 		output_length -= 2;
 	}
 	*output = '\0';
+	return p - (uint8_t*)buf;
 }
 
 /* Convert buffer of binary data into dump format
  * start_offset being x will result in the first line address to be aligned to x. Use 0 if unsure. */
-void amlog_dump(const void* buf, int length, char* output, int output_length, uint64_t start_offset)
+int amlog_dump(const void* buf, int length, char* org_output, int output_length, uint64_t start_offset)
 {
+	char* output = org_output;
 	char hex[16*3 + 2], asc[16 + 2];
 	const uint8_t* ptr = buf;
 	const uint8_t* end = ptr + length;
@@ -265,9 +267,14 @@ void amlog_dump(const void* buf, int length, char* output, int output_length, ui
 			output_length = 1;
 			break;
 		}
+
+		output += added;
+		output_length -= added;
 	}
 
 	*output = '\0';
+
+	return output - org_output;
 }
 
 

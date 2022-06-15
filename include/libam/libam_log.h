@@ -74,12 +74,14 @@ void amlog_sink_term();
 
 /* A handful of useful formatting functions */
 
-/* Convert a buffer to binary string */
-void amlog_hex(const void* buf, int length, char* output, int output_length);
+/* Convert a buffer to binary string.
+ * @Returns length used (Excluding null terminator) */
+int amlog_hex(const void* buf, int length, char* output, int output_length);
 
 /* Convert buffer of binary data into dump format
- * start_offset being x will result in the first line address to be aligned to x. Use 0 if unsure. */
-void amlog_dump(const void* buf, int length, char* output, int output_length, uint64_t start_offset);
+ * start_offset being x will result in the first line address to be aligned to x. Use 0 if unsure.
+ * @Returns length used (Excluding null terminator) */
+int amlog_dump(const void* buf, int length, char* output, int output_length, uint64_t start_offset);
 
 
 /* Default supplied sink */
