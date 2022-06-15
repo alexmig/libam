@@ -263,9 +263,7 @@ static void amtree_balance_add(amtree_t* t, amtree_node_t* n)
 				return amtree_rotate_right(t, p, n);
 			return amtree_rotate_left_right(t, p, n);
 		default:
-			AMLOG_PLAIN(dlog, "impossible balance for tree key %lx - %d\n",
-					p->key, p->balance);
-			amlog_flush(dlog);
+			/* impossible balance for tree key p->key - p->balance */
 			abort();
 		}
 	}
@@ -347,9 +345,7 @@ static void amtree_balance_del(amtree_t* t, amtree_node_t* parent)
 			parent = parent->parent;
 			break;
 		default:
-			AMLOG_PLAIN(dlog, "impossible balance for tree key %lx - %d\n",
-					parent->key, parent->balance);
-			amlog_flush(dlog);
+			/* impossible balance for tree key parent->key - parent->balance */
 			abort();
 		}
 

@@ -12,6 +12,13 @@ static int is_problem[UINT8_MAX];
 
 #define UNUSED(x) (void)(x)
 
+#ifdef DEBUG
+#include "libam/libam_logsink.h"
+#define DEBUG_PRINT(fmt, args...)	amlog_sink_log(0, 0, fmt, ##args)
+#else
+#define DEBUG_PRINT(fmt, args...)
+#endif
+
 void amopts_init(amopt_t* opt, void* structure, amopt_val_t final_validate)
 {
 	if (!initialized) {
@@ -86,26 +93,26 @@ static amrc_t amopts_validate(const amopt_option_t* opt)
 	// Validate individual ones
 
 	if (amopts_validate_char(opt->form_short, 0) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Option %p has non-printable short form\n", opt);
+		DEBUG_PRINT("ERROR: Option %p has non-printable short form\n", opt);
 		return AMRC_ERROR;
 	}
 
 	if (opt->form_long == NULL || opt->form_long[0] == '\0') {
-		AMLOG_DEFUALT("ERROR: Must provide long-form name of option\n");
+		DEBUG_PRINT("ERROR: Must provide long-form name of option\n");
 	}
 
 	if (amopts_validate_printable(opt->form_long, 0) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Option %p has non-printable long form\n", opt);
+		DEBUG_PRINT("ERROR: Option %p has non-printable long form\n", opt);
 		return AMRC_ERROR;
 	}
 
 	if (strlen(opt->form_long) >= 20) {
-		AMLOG_DEFUALT("ERROR: Option %s has too long of a form\n", opt->form_long);
+		DEBUG_PRINT("ERROR: Option %s has too long of a form\n", opt->form_long);
 		return AMRC_ERROR;
 	}
 
 	if (amopts_validate_printable(opt->help_string, 1) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Option %s has non-printable help string\n", opt->form_long);
+		DEBUG_PRINT("ERROR: Option %s has non-printable help string\n", opt->form_long);
 		return AMRC_ERROR;
 	}
 
@@ -117,28 +124,28 @@ static amrc_t amopts_validate(const amopt_option_t* opt)
 	case AMOPT_CUSTOM:
 		break;
 	default:
-		AMLOG_DEFUALT("ERROR: Unrecognized option type %d\n", opt->type);
+		DEBUG_PRINT("ERROR: Unrecognized option type %d\n", opt->type);
 		return AMRC_ERROR;
 	}
 
 	if (amopts_validate_printable(opt->default_value, 1) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Option %p has non-printable default value\n", opt);
+		DEBUG_PRINT("ERROR: Option %p has non-printable default value\n", opt);
 		return AMRC_ERROR;
 	}
 
 	// Validate combinations
 	if (opt->type == AMOPT_CUSTOM && opt->parse == NULL) {
-		AMLOG_DEFUALT("ERROR: Must provide parsing callback for custom option %p\n", opt);
+		DEBUG_PRINT("ERROR: Must provide parsing callback for custom option %p\n", opt);
 		return AMRC_ERROR;
 	}
 
 	if (opt->type != AMOPT_CUSTOM && opt->parse != NULL) {
-		AMLOG_DEFUALT("ERROR: Cannot provide custom parsing for standard types\n");
+		DEBUG_PRINT("ERROR: Cannot provide custom parsing for standard types\n");
 		return AMRC_ERROR;
 	}
 
 	if (opt->type == AMOPT_FLAG && opt->validate != NULL) {
-		AMLOG_DEFUALT("ERROR: Flag options do not support validation\n");
+		DEBUG_PRINT("ERROR: Flag options do not support validation\n");
 		return AMRC_ERROR;
 	}
 
@@ -161,12 +168,12 @@ static amrc_t amopt_prase_uint64(void* opt, void* member, const char* input)
 	UNUSED(opt);
 
 	if (amopts_validate_numeric(input, 0, 0) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Error parsing input '%s', was expecting positive number\n", input);
+		printf("ERROR: Error parsing input '%s', was expecting positive number\n", input);
 		return AMRC_ERROR;
 	}
 
 	if (sscanf(input, "%lu", dest) != 1) {
-		AMLOG_DEFUALT("ERROR: Unable to read input '%s'\n", input);
+		printf("ERROR: Unable to read input '%s'\n", input);
 		return AMRC_ERROR;
 	}
 
@@ -179,12 +186,12 @@ static amrc_t amopt_prase_udouble(void* opt, void* member, const char* input)
 	UNUSED(opt);
 
 	if (amopts_validate_numeric(input, 0, 1) != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Error parsing input '%s', was expecting positive number\n", input);
+		printf("ERROR: Error parsing input '%s', was expecting positive number\n", input);
 		return AMRC_ERROR;
 	}
 
 	if (sscanf(input, "%lf", dest) != 1) {
-		AMLOG_DEFUALT("ERROR: Unable to read input '%s'\n", input);
+		printf("ERROR: Unable to read input '%s'\n", input);
 		return AMRC_ERROR;
 	}
 
@@ -198,7 +205,7 @@ static amrc_t amopt_prase_string(void* opt, void* member, const char* input)
 	UNUSED(opt);
 
 	if (dup == NULL) {
-		AMLOG_DEFUALT("ERROR: Failed to duplicate '%s'\n", input);
+		printf("ERROR: Failed to duplicate '%s'\n", input);
 		return AMRC_ERROR;
 	}
 
@@ -231,7 +238,7 @@ amrc_t amopts_register_option(amopt_t* opt, amopt_option_t* opn)
 	else if (opn->default_value != NULL) {
 		rc = opn->parse(opt->structure, dest, opn->default_value);
 		if (rc != AMRC_SUCCESS) {
-			AMLOG_DEFUALT("ERROR: Option %s failed to parse default value\n", opn->form_long);
+			printf("ERROR: Option %s failed to parse default value\n", opn->form_long);
 			return AMRC_ERROR;
 		}
 		opn->is_set = 1;
@@ -275,7 +282,7 @@ static amrc_t amopts_read_value(amopt_t* opt, amopt_option_t* opn, char* value)
 
 	rc = opn->parse(opt->structure, dest, value);
 	if (rc != AMRC_SUCCESS) {
-		AMLOG_DEFUALT("ERROR: Failed to parse input '%s' to option %s\n", value, opn->form_long);
+		printf("ERROR: Failed to parse input '%s' to option %s\n", value, opn->form_long);
 		return AMRC_ERROR;
 	}
 
@@ -309,7 +316,7 @@ amrc_t amopts_read(amopt_t* opt, int argc, char** argv)
 			opn = amopts_search_short(opt, arg + 1);
 
 		if (opn == NULL) {
-			AMLOG_DEFUALT("ERROR: Unrecognized option '%s'\n", arg);
+			printf("ERROR: Unrecognized option '%s'\n", arg);
 			return AMRC_ERROR;
 		}
 
@@ -320,7 +327,7 @@ amrc_t amopts_read(amopt_t* opt, int argc, char** argv)
 		}
 
 		if (i + 1 >= argc) {
-			AMLOG_DEFUALT("ERROR: Must provide input to argument %s\n", opn->form_long);
+			printf("ERROR: Must provide input to argument %s\n", opn->form_long);
 			return AMRC_ERROR;
 		}
 
@@ -335,7 +342,7 @@ amrc_t amopts_read(amopt_t* opt, int argc, char** argv)
 
 	amlist_for_each_entry(opn, &opt->opt_list, link) {
 		if (!opn->is_set) {
-			AMLOG_DEFUALT("ERROR: No default exists for option %s, must specify a value\n", opn->form_long);
+			printf("ERROR: No default exists for option %s, must specify a value\n", opn->form_long);
 			return AMRC_ERROR;
 		}
 	}
@@ -356,32 +363,32 @@ static int amopts_print_opt(amopt_option_t* opn)
 	int is_mandatory = 0;
 
 	if (opn->default_value == NULL && opn->type != AMOPT_FLAG) {
-		AMLOG_PLAIN(dlog, "*");
+		printf("*");
 		is_mandatory = 1;
 	}
 	else
-		AMLOG_PLAIN(dlog, " ");
+		printf(" ");
 
 	if (opn->form_short != '\0')
-		AMLOG_PLAIN(dlog, "-%c ", opn->form_short);
+		printf("-%c ", opn->form_short);
 	else
-		AMLOG_PLAIN(dlog, "   ");
-	AMLOG_PLAIN(dlog, "--%-20s ", opn->form_long);
+		printf("   ");
+	printf("--%-20s ", opn->form_long);
 
 	len = strnlen(opn->help_string, 256);
 
 	while (len > 0) {
 		if (len <= max_help) {
-			AMLOG_PLAIN(dlog, "%.*s\n", len, help);
+			printf("%.*s\n", len, help);
 			return is_mandatory;
 		}
 
-		AMLOG_PLAIN(dlog, "%.*s\n", max_help, help);
-		AMLOG_PLAIN(dlog, "                           ");
+		printf("%.*s\n", max_help, help);
+		printf("                           ");
 		help += max_help;
 		len -= max_help;
 	}
-	AMLOG_PLAIN(dlog, "\n");
+	printf("\n");
 	return is_mandatory;
 }
 
@@ -393,10 +400,10 @@ void amopts_print_help(amopt_t* opt)
 	amlist_for_each_entry(option, &opt->opt_list, link) {
 		mandatories = amopts_print_opt(option) || mandatories;
 	}
-	AMLOG_PLAIN(dlog, "\n");
+	printf("\n");
 	if (mandatories)
-		AMLOG_PLAIN(dlog, " Options marked with '*' are mandatory.\n");
-	AMLOG_PLAIN(dlog, " Specify value --[option] [value]. Flags require no value.\n\n");
+		printf(" Options marked with '*' are mandatory.\n");
+	printf(" Specify value --[option] [value]. Flags require no value.\n\n");
 }
 
 void amopts_print_values(amopt_t* opt)
@@ -404,19 +411,19 @@ void amopts_print_values(amopt_t* opt)
 	amopt_option_t* opn;
 	void* dest;
 
-	AMLOG_PLAIN(dlog, "Printing command-line options\n");
+	printf("Printing command-line options\n");
 	amlist_for_each_entry(opn, &opt->opt_list, link) {
 		dest = ((uint8_t*)opt->structure) + opn->offset;
 
-		AMLOG_PLAIN(dlog, "  %-20s ", opn->form_long);
+		printf("  %-20s ", opn->form_long);
 		switch (opn->type) {
-		case AMOPT_FLAG: 	AMLOG_PLAIN(dlog, "%u\n", *(uint8_t*)dest); break;
-		case AMOPT_UINT64: 	AMLOG_PLAIN(dlog, "%lu\n", *(uint64_t*)dest); break;
-		case AMOPT_UDOUBLE: AMLOG_PLAIN(dlog, "%lf\n", *(double*)dest); break;
-		case AMOPT_STRING: 	AMLOG_PLAIN(dlog, "'%s'\n", *((char**)dest)); break;
+		case AMOPT_FLAG: 	printf("%u\n", *(uint8_t*)dest); break;
+		case AMOPT_UINT64: 	printf("%lu\n", *(uint64_t*)dest); break;
+		case AMOPT_UDOUBLE: printf("%lf\n", *(double*)dest); break;
+		case AMOPT_STRING: 	printf("'%s'\n", *((char**)dest)); break;
 		case AMOPT_CUSTOM:
 			if (opn->print_custom != NULL) opn->print_custom(opt->structure, dest);
-			else AMLOG_PLAIN(dlog, "Custom attribute with no print function\n");
+			else printf("Custom attribute with no print function\n");
 			break;
 		}
 	}
