@@ -63,10 +63,10 @@ amstrhash_entry_t* amstrhash_find(amstrhash_t* strhash, const char* key);
  * NOTE: Will invoke deletion callbacks in calling thread.
  * @Returns AMRC_SUCCESS / AMRC_ERROR
  */
-amrc_t amstrhash_remove_key(amstrhash_t* strhash, amstrhash_entry_t*);
+amrc_t amstrhash_remove(amstrhash_t* strhash, amstrhash_entry_t*);
 
-/* Same as amstrhash_remove_key, only it issues amstrhash_find first */
-amrc_t amstrhash_remove(amstrhash_t* strhash, const char* key);
+/* Same as amstrhash_remove, only it issues amstrhash_find first */
+amrc_t amstrhash_remove_key(amstrhash_t* strhash, const char* key);
 
 /* @Returns current capacity. 0 on error */
 uint64_t amstrhash_get_capacity(const amstrhash_t* strhash);
@@ -75,7 +75,9 @@ uint64_t amstrhash_get_capacity(const amstrhash_t* strhash);
 uint64_t amstrhash_get_size(const amstrhash_t* strhash);
 
 
-const char* amstrhash_ent_key(amstrhash_entry_t* ent);
-void* amstrhash_ent_value(amstrhash_entry_t* ent);
+/* Basic access methods for entry */
+const char* amstrhash_get_ent_key(amstrhash_entry_t* ent);
+void* amstrhash_get_ent_value(amstrhash_entry_t* ent);
+void amstrhash_set_ent_value(amstrhash_entry_t* ent, void* value);
 
 #endif /* _LIBAM_STRHASH_H_ */

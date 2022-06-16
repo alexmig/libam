@@ -333,10 +333,8 @@ done:
 
 }
 
-/* Locate key in table.
- * key - Null-terminated string
- * @Returns pointer to existing key / NULL if not found or on error */
-amstrhash_entry_t* amstrhash_find(amstrhash_t* hash, const char* key)
+/* Same as amstrhash_find, only exposing use_lock */
+static amstrhash_entry_t* amstrhash_find_lock(amstrhash_t* hash, const char* key, ambool_t use_lock)
 {
 	uint64_t hash_value;
 	amstrhash_bucket_t* bucket;
@@ -346,7 +344,7 @@ amstrhash_entry_t* amstrhash_find(amstrhash_t* hash, const char* key)
 
 	hash_value = calc_hash(key, NULL);
 
-	if (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK)
+	if (use_lock && (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK))
 		pthread_rwlock_rdlock(&hash->lock);
 
 	bucket = amstrhash_bucket(hash, hash_value);
@@ -364,31 +362,50 @@ amstrhash_entry_t* amstrhash_find(amstrhash_t* hash, const char* key)
 		}
 	}
 
-	if (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK)
+	if (use_lock && (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK))
 		pthread_rwlock_unlock(&hash->lock);
 
 	return out;
 }
 
+/* Locate key in table.
+ * key - Null-terminated string
+ * @Returns pointer to existing key / NULL if not found or on error */
+amstrhash_entry_t* amstrhash_find(amstrhash_t* hash, const char* key)
+{
+	return amstrhash_find_lock(hash, key, am_true);
+}
+
+
 /* Remove an already-located key from table.
  * NOTE: Will invoke deletion callbacks in calling thread.
  * @Returns AMRC_SUCCESS / AMRC_ERROR
  */
-amrc_t amstrhash_remove_key(amstrhash_t* hash, amstrhash_entry_t* ent)
+amrc_t amstrhash_remove(amstrhash_t* hash, amstrhash_entry_t* ent)
 {
+	if (ent == NULL)
+		return AMRC_ERROR;
 	amstrhash_ent_remove(hash, ent, am_true, am_true);
 	return AMRC_SUCCESS;
 }
 
-/* Same as amstrhash_remove_key, only it issues amstrhash_find first */
-amrc_t amstrhash_remove(amstrhash_t* hash, const char* key)
+/* Same as amstrhash_remove, only it issues amstrhash_find first */
+amrc_t amstrhash_remove_key(amstrhash_t* hash, const char* key)
 {
 	amstrhash_entry_t* ent;
 
-	ent = amstrhash_find(hash, key);
+	if (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK)
+		pthread_rwlock_wrlock(&hash->lock);
+
+	ent = amstrhash_find_lock(hash, key, am_false);
 	if (ent == NULL)
 		return AMRC_ERROR;
-	return amstrhash_remove_key(hash, ent);
+
+	amstrhash_ent_remove(hash, ent, am_true, am_false);
+
+	if (hash->flags & LIBAM_STRHASH_FLAG_USE_LOCK)
+		pthread_rwlock_unlock(&hash->lock);
+	return AMRC_SUCCESS;
 }
 
 /* @Returns current capacity. 0 on error */
@@ -404,12 +421,17 @@ uint64_t amstrhash_get_size(const amstrhash_t* hash)
 }
 
 
-const char* amstrhash_ent_key(amstrhash_entry_t* ent)
+const char* amstrhash_get_ent_key(amstrhash_entry_t* ent)
 {
 	return ent->key;
 }
 
-void* amstrhash_ent_value(amstrhash_entry_t* ent)
+void* amstrhash_get_ent_value(amstrhash_entry_t* ent)
 {
 	return ent->value;
+}
+
+void amstrhash_set_ent_value(amstrhash_entry_t* ent, void* value)
+{
+	ent->value = value;
 }
