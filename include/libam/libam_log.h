@@ -8,6 +8,12 @@
 #include <libam/libam_cqueue.h>
 #include <libam/libam_replace.h>
 
+typedef enum amlog_flags {
+	AMLOG_FLAGS_NONE = 0,
+	AMLOG_FLAGS_USE_THREAD = 1 << 0, /* This will offload all direct callbacks to thread(s).
+	 	 	 	 	 	 	 	 	 This also means that logs will be formatted on the spot, rather than on-demand */
+} amlog_flags_t;
+
 typedef struct amlog_line {
 	amtime_t	timestamp;	/* Timestamp at time of logging of line */
 	uint64_t	level;	/* Numerical log level of line */
@@ -15,8 +21,8 @@ typedef struct amlog_line {
 	const char* file;	/* Name of file in which log line originated */
 	const char* function;	/* Name of function in which log line originated */
 	int			line;	/* Line number in which log line originated */
-	const char* message;	/* Null terminated message to print. May contain newlines. */
-	int			message_length; /* Length in bytes of message passed, excluding null terminator */
+	const char	message[256];	/* Null terminated message to print. May contain newlines. */
+	int			message_length;	/* Length in bytes of message passed, excluding null terminator */
 } amlog_line_t;
 
 struct amlog_sink;
@@ -62,13 +68,15 @@ void amlog_sink_unregister(amlog_sink_t* sink);
 
 
 amrc_t amlog_sink_message(const char* file, const char* function, int line, uint64_t level, uint64_t mask, const char *fmt, ...);
-#define amlog_sink_log(level, mask, fmt, args...)	amlog_sink_message(__LOCATION__, __FUNCTION__, __LINE__, level, mask, fmt, ##args)
+#define amlog_sink_log(level, mask, fmt, args...)	amlog_sink_message(__FILENAME__, __FUNCTION__, __LINE__, level, mask, fmt, ##args)
 
 
-/* Initialized sink fnctionality */
-amrc_t amlog_sink_init();
+/* Initialized sink fnctionality.
+ * NOT THREAD SAFE with other init/term */
+amrc_t amlog_sink_init(amlog_flags_t flags);
 
-/* Terminate sink fnctionality */
+/* Terminate sink fnctionality.
+ * NOT THREAD SAFE with other init/term */
 void amlog_sink_term();
 
 

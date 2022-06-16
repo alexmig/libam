@@ -27,6 +27,8 @@
 #ifndef __FLSTRING__
 #define __FLSTRING__ __FLSTRING1__(__FILE__, __LINE__)
 #endif
+
+#define __FILENAME__		(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define __LOCATION__		(strrchr(__FLSTRING__, '/') ? strrchr(__FLSTRING__, '/') + 1 : __FLSTRING__)
 
 #else /* __FILENAME__ exists */

@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <assert.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
@@ -9,6 +11,11 @@
 
 #include "libam/libam_list.h"
 
+
+enum log_constatns {
+	THREAD_LINE_BUFFER_SIZE = 2048,
+	THREAD_POLL_FREQ = 5 * AMTIME_MSEC,
+};
 
 struct amlog_sink {
 	amlink_t	link;
@@ -21,7 +28,18 @@ struct amlog_sink {
 	amcqueue_t* out_queue;
 };
 
+typedef struct log_thread {
+	pthread_t		thread;
+	ambool_t		keep_running;
+	amcqueue_t* 	in_queue;
+	amcqueue_t* 	out_queue;
+	amlog_line_t	line_buffer[THREAD_LINE_BUFFER_SIZE];
+	amlog_sink_t*	sink;
+} log_thread_t;
+
 /* TODO: Locks? */
+
+static log_thread_t* log_thread = NULL;
 static amlist_t direct_sinks = { .next = &direct_sinks, .prev = &direct_sinks};
 static amlist_t queued_sinks = { .next = &queued_sinks, .prev = &queued_sinks};
 
@@ -136,6 +154,7 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 	amlog_line_t* queued_ent;
 	amrc_t rc;
 	va_list ap;
+	char* non_const_message = (char*)ent.message;
 
 	ent.level = level;
 	ent.mask = mask;
@@ -154,8 +173,9 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 		if (!formatted) {
 			ent.timestamp = amtime_now();
 			va_start(ap, fmt);
-			ent.message_length = vasprintf((char**)&ent.message, fmt, ap);
+			ent.message_length = vsnprintf(non_const_message, sizeof(ent.message) - 1, fmt, ap);
 			va_end(ap);
+			non_const_message[sizeof(ent.message) - 1] = '\0';
 			if (ent.message_length < 0)
 				return AMRC_ERROR;
 			formatted = 1;
@@ -171,44 +191,145 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 			continue;
 	}
 
-	/* TODO: Threads? */
-	amlist_for_each_entry(sink, &direct_sinks, link) {
-		if (sink->mask != 0 && ent.mask != 0 && (sink->mask & ent.mask) == 0)
-			continue;
-		if (sink->level < ent.level)
-			continue;
-		if (!formatted) {
-			ent.timestamp = amtime_now();
-			va_start(ap, fmt);
-			ent.message_length = vasprintf((char**)&ent.message, fmt, ap);
-			va_end(ap);
-			if (ent.message_length < 0)
-				return AMRC_ERROR;
-			formatted = 1;
-		}
+	if (log_thread == NULL) {
+		amlist_for_each_entry(sink, &direct_sinks, link) {
+			if (sink->mask != 0 && ent.mask != 0 && (sink->mask & ent.mask) == 0)
+				continue;
+			if (sink->level < ent.level)
+				continue;
+			if (!formatted) {
+				ent.timestamp = amtime_now();
+				va_start(ap, fmt);
+				ent.message_length = vsnprintf(non_const_message, sizeof(ent.message) - 1, fmt, ap);
+				va_end(ap);
+				non_const_message[sizeof(ent.message) - 1] = '\0';
+				if (ent.message_length < 0)
+					return AMRC_ERROR;
+				formatted = 1;
+			}
 
-		memcpy(&ent_direct, &ent, sizeof(ent));
-		sink->callback(sink, sink->user_data, &ent_direct);
+			memcpy(&ent_direct, &ent, sizeof(ent));
+			sink->callback(sink, sink->user_data, &ent_direct);
+		}
 	}
 
 	/* TODO: Locks? lockless? */
 
-	if (ent.message != NULL)
-		free((char*)ent.message);
-
 	return AMRC_SUCCESS;
 }
 
-/* Initialized sink fnctionality */
-amrc_t amlog_sink_init()
+static void* amlog_direct_callback_thread_func(void* data)
 {
-	return AMRC_SUCCESS;
+	amrc_t rc;
+	log_thread_t* log_thread = data;
+	amlog_line_t* ent;
+	amlog_line_t ent_copy;
+	amlog_sink_t* sink;
+	struct timespec delay = { .tv_sec = 0, .tv_nsec = THREAD_POLL_FREQ};
+
+	while (am_true) {
+		rc = amcqueue_deq(log_thread->in_queue, (void**)&ent);
+		if (rc != AMRC_SUCCESS) {
+			if (!log_thread->keep_running)
+				break;
+
+			nanosleep(&delay, NULL);
+			continue;
+		}
+
+		amlist_for_each_entry(sink, &direct_sinks, link) {
+			if (sink->mask != 0 && ent->mask != 0 && (sink->mask & ent->mask) == 0) {
+				continue;
+			}
+			if (sink->level < ent->level) {
+				continue;
+			}
+			memcpy(&ent_copy, ent, sizeof(*ent));
+			sink->callback(sink, sink->user_data, &ent_copy);
+		}
+		rc = amcqueue_enq(log_thread->out_queue, ent);
+		assert(rc == AMRC_SUCCESS);
+	}
+
+	return NULL;
 }
 
-/* Terminate sink fnctionality */
+/* Initialized sink fnctionality.
+ * NOT THREAD SAFE with other init/term */
+amrc_t amlog_sink_init(amlog_flags_t flags)
+{
+	int i;
+	amrc_t rc;
+
+	if (flags & AMLOG_FLAGS_USE_THREAD) {
+		assert(log_thread == NULL);
+
+		log_thread = malloc(sizeof(*log_thread));
+		if (log_thread == NULL)
+			goto error;
+		memset(log_thread, 0, sizeof(*log_thread));
+		log_thread->keep_running = am_true;
+
+		/* Allocate queues for sink */
+		log_thread->in_queue = amcqueue_alloc(THREAD_LINE_BUFFER_SIZE);
+		if (log_thread->in_queue == NULL)
+			goto error;
+
+		log_thread->out_queue = amcqueue_alloc(THREAD_LINE_BUFFER_SIZE);
+		if (log_thread->out_queue == NULL)
+			goto error;
+
+		for (i = 0; i < THREAD_LINE_BUFFER_SIZE; i++) {
+			rc = amcqueue_enq(log_thread->out_queue, &log_thread->line_buffer[i]);
+			if (rc != AMRC_SUCCESS)
+				goto error;
+		}
+
+		log_thread->sink = amlog_sink_register_queued("amlog direct callback thread", log_thread->in_queue, log_thread->out_queue, NULL);
+		if (log_thread->sink == NULL)
+			goto error;
+
+		rc = pthread_create(&log_thread->thread, NULL, amlog_direct_callback_thread_func, log_thread);
+		if (rc != 0) {
+			goto error;
+		}
+	}
+
+	return AMRC_SUCCESS;
+
+error:
+	if (log_thread != NULL) {
+		if (log_thread->sink != NULL)
+			amlog_sink_unregister(log_thread->sink);
+		if (log_thread->in_queue != NULL)
+			amcqueue_free(log_thread->in_queue);
+		if (log_thread->out_queue != NULL)
+			amcqueue_free(log_thread->out_queue);
+		free(log_thread);
+		log_thread = NULL;
+	}
+
+	return AMRC_ERROR;
+}
+
+/* Terminate sink fnctionality.
+ * NOT THREAD SAFE */
 void amlog_sink_term()
 {
+	if (log_thread != NULL) {
+		log_thread->keep_running = am_false;
+		pthread_join(log_thread->thread, NULL);
+		if (log_thread->sink != NULL)
+			amlog_sink_unregister(log_thread->sink);
+		if (log_thread->in_queue != NULL)
+			amcqueue_free(log_thread->in_queue);
+		if (log_thread->out_queue != NULL)
+			amcqueue_free(log_thread->out_queue);
+		free(log_thread);
+		log_thread = NULL;
+	}
 }
+
 
 /* Convert a buffer to binary string */
 int amlog_hex(const void* buf, int length, char* output, int output_length)
