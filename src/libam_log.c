@@ -38,12 +38,13 @@ typedef struct log_thread {
 	amlog_sink_t*	sink;
 } log_thread_t;
 
-/* TODO: Locks? */
-
 static ambool_t abort_on_error = am_false;
 static ambool_t block_on_error = am_false;
 static log_thread_t* log_thread = NULL;
+
+static pthread_rwlock_t direct_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static amlist_t direct_sinks = { .next = &direct_sinks, .prev = &direct_sinks};
+static pthread_rwlock_t queued_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static amlist_t queued_sinks = { .next = &queued_sinks, .prev = &queued_sinks};
 
 /* Register a direct sink.
@@ -69,7 +70,9 @@ amlog_sink_t* amlog_sink_register_direct(const char* name, amlog_sink_cb_t callb
 	sink->user_data = user_data;
 	sink->callback = callback;
 
+	pthread_rwlock_wrlock(&direct_rwlock);
 	amlist_add(&direct_sinks, &sink->link);
+	pthread_rwlock_unlock(&direct_rwlock);
 
 	return sink;
 }
@@ -99,7 +102,9 @@ amlog_sink_t* amlog_sink_register_queued(const char* name, amcqueue_t* in_queue,
 	sink->in_queue = in_queue;
 	sink->out_queue = out_queue;
 
+	pthread_rwlock_wrlock(&queued_rwlock);
 	amlist_add(&queued_sinks, &sink->link);
+	pthread_rwlock_unlock(&queued_rwlock);
 
 	return sink;
 }
@@ -209,9 +214,8 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 	ent.function = function;
 	ent.line = line;
 
-	/* TODO: readlock? lockless? */
-
 	/* First, push copies of messages to queued handlers */
+	pthread_rwlock_rdlock(&queued_rwlock); /* Until we have a lockless iterable structure... */
 	amlist_for_each_entry(sink, &queued_sinks, link) {
 		if (sink->mask != 0 && ent.mask != 0 && (sink->mask & ent.mask) == 0)
 			continue;
@@ -225,8 +229,10 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 			ent.message_length = vsnprintf(non_const_message, sizeof(ent.message) - 1, fmt, ap);
 			va_end(ap);
 			non_const_message[sizeof(ent.message) - 1] = '\0';
-			if (ent.message_length < 0)
+			if (ent.message_length < 0) {
+				pthread_rwlock_unlock(&queued_rwlock);
 				return AMRC_ERROR;
+			}
 			formatted = 1;
 		}
 
@@ -239,8 +245,10 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 		if (rc != AMRC_SUCCESS)
 			continue;
 	}
+	pthread_rwlock_unlock(&queued_rwlock);
 
 	if (log_thread == NULL) {
+		pthread_rwlock_rdlock(&direct_rwlock); /* Until we have a lockless iterable structure... */
 		amlist_for_each_entry(sink, &direct_sinks, link) {
 			if (sink->mask != 0 && ent.mask != 0 && (sink->mask & ent.mask) == 0)
 				continue;
@@ -252,17 +260,18 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 				ent.message_length = vsnprintf(non_const_message, sizeof(ent.message) - 1, fmt, ap);
 				va_end(ap);
 				non_const_message[sizeof(ent.message) - 1] = '\0';
-				if (ent.message_length < 0)
+				if (ent.message_length < 0) {
+					pthread_rwlock_unlock(&direct_rwlock);
 					return AMRC_ERROR;
+				}
 				formatted = 1;
 			}
 
 			memcpy(&ent_direct, &ent, sizeof(ent));
 			sink->callback(sink, sink->user_data, &ent_direct);
 		}
+		pthread_rwlock_unlock(&direct_rwlock);
 	}
-
-	/* TODO: Locks? lockless? */
 
 	return AMRC_SUCCESS;
 }
@@ -286,6 +295,7 @@ static void* amlog_direct_callback_thread_func(void* data)
 			continue;
 		}
 
+		pthread_rwlock_rdlock(&direct_rwlock); /* Until we have a lockless iterable structure... */
 		amlist_for_each_entry(sink, &direct_sinks, link) {
 			if (sink->mask != 0 && ent->mask != 0 && (sink->mask & ent->mask) == 0) {
 				continue;
@@ -296,6 +306,8 @@ static void* amlog_direct_callback_thread_func(void* data)
 			memcpy(&ent_copy, ent, sizeof(*ent));
 			sink->callback(sink, sink->user_data, &ent_copy);
 		}
+		pthread_rwlock_unlock(&direct_rwlock);
+
 		rc = amcqueue_enq(log_thread->out_queue, ent);
 		assert(rc == AMRC_SUCCESS);
 	}
