@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,6 +7,12 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+
+#ifdef NDEBUG
+#define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
+#else
+#include <assert.h>
+#endif
 
 #include "libam/libam_strhash.h"
 
@@ -210,7 +215,7 @@ static amrc_t check_overwrite()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -273,8 +278,8 @@ static amrc_t check_no_overwrite()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
-	amstrhash_entry_t* old_ent;
+	amstrhash_entry_t* ent = NULL;
+	amstrhash_entry_t* old_ent = NULL;;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -339,7 +344,7 @@ static amrc_t check_free_cb()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -397,7 +402,7 @@ static amrc_t check_no_free_cb()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -455,7 +460,7 @@ static amrc_t check_no_dup_keys()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -494,7 +499,7 @@ static amrc_t check_insert_find_delete()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -538,7 +543,7 @@ static amrc_t check_insert_find_delete_key()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -586,7 +591,7 @@ static amrc_t check_value_replace()
 	static const char* key = "dummy key";
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	amrc_t rc;
 
 	on_delete_callback_init();
@@ -816,7 +821,7 @@ static void validate_objlist(obj_list_t* olist, amstrhash_t* hash)
 {
 	uint64_t i;
 	object_t* obj;
-	amstrhash_entry_t* ent;
+	amstrhash_entry_t* ent = NULL;
 	uint64_t in = 0;
 
 	for (i = 0; i < OBJECTS_PER_LIST; i++) {
@@ -866,18 +871,7 @@ static void run_threaded_test(uint64_t thread_num)
 
 	amstrhash_term(hash);
 }
-/* Basic idea - Have three groups of threads - Readers, writers, and meddlers
- * Writers simply deplete their pools of objects into the stack as fast as they can.
- * Meddlers take out an object from the stack, and put it back
- * Readers deplete the stack and store objects
- *
- * All writers combined will always write WRITE_OBJECTS objects to the stack, and all readers combined will always read as much.
- * Once done, the readers and writers would stop temselves. The meddlers will wait for the signal_stop to fire before shutting down.
- * The amount of meddling is varaible, and depends on contention and scheduling
- *
- * All actions are recorded in the objects themselves.
- * The stack is sized small, to get a lot of contention around the empty & full cases.
- * After a round is done, all object are counted and histories accounted for, to make sure everything lines up */
+
 int main()
 {
 	amtime_t start;

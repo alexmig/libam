@@ -1,9 +1,14 @@
-#include <assert.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef NDEBUG
+#define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
+#else
+#include <assert.h>
+#endif
 
 #include "libam.h"
 #include "libam/libam_pool.h"

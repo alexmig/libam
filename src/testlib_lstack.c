@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -7,6 +6,12 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+
+#ifdef NDEBUG
+#define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
+#else
+#include <assert.h>
+#endif
 
 #include "libam/libam_time.h"
 #include "libam/libam_atomic.h"

@@ -18,7 +18,11 @@ jobs:
     - uses: actions/checkout@v3
     - name: configure
       run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
+    - name: debug make
+      run: make BUILD=debug
+    - name: debug make check
+      run: make BUILD=debug check
+    - name: release make
+      run: make BUILD=release
+    - name: release make check
+      run: make BUILD=release check
