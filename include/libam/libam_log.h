@@ -69,6 +69,10 @@ uint64_t amlog_sink_set_mask(amlog_sink_t* sink, uint64_t new_mask);
 void amlog_sink_unregister(amlog_sink_t* sink);
 
 
+/* Main logging function -
+ * level - Only sinks that are configured to print this level or above will see the message. Set to 0 to always send to all sinks.
+ * mask - Only sinks that have at least one component mask in common with this line will see this message. Set to 0 to always send to all sinks.
+ * @Returns AMRC_SUCCESS if printed successfully / AMRC_ERROR if failed to format, allocate memory, or queue */
 amrc_t amlog_sink_message(const char* file, const char* function, int line, uint64_t level, uint64_t mask, const char *fmt, ...);
 #define amlog_sink_log(level, mask, fmt, args...)	amlog_sink_message(__FILENAME__, __FUNCTION__, __LINE__, level, mask, fmt, ##args)
 
