@@ -147,8 +147,13 @@ uint64_t amlog_sink_set_mask(amlog_sink_t* sink, uint64_t new_mask)
 /* Unregisters the sink and invalidates the handle */
 void amlog_sink_unregister(amlog_sink_t* sink)
 {
+	static pthread_rwlock_t* lock;
+
 	if (sink != NULL) {
+		lock = (sink->callback == NULL ? &queued_rwlock : &direct_rwlock);
+		pthread_rwlock_wrlock(lock);
 		amlist_del(&sink->link);
+		pthread_rwlock_unlock(lock);
 		free(sink);
 	}
 }
