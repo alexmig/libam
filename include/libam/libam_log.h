@@ -10,8 +10,10 @@
 
 typedef enum amlog_flags {
 	AMLOG_FLAGS_NONE = 0,
-	AMLOG_FLAGS_USE_THREAD = 1 << 0, /* This will offload all direct callbacks to thread(s).
-	 	 	 	 	 	 	 	 	 This also means that logs will be formatted on the spot, rather than on-demand */
+	AMLOG_FLAGS_USE_THREAD		= 1 << 0, /* This will offload all direct callbacks to thread(s).
+	 	 	 	 	 	 	 	 	 	 	 This also means that logs will be formatted on the spot, rather than on-demand */
+	AMLOG_FLAGS_BLOCK_ON_ERROR	= 1 << 1, /* Instead of failing, block until able to succeed */
+	AMLOG_FLAGS_ABORT_ON_ERROR	= 1 << 2, /* Instead of failing, abort */
 } amlog_flags_t;
 
 typedef struct amlog_line {

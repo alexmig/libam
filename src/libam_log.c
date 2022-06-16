@@ -15,6 +15,7 @@
 enum log_constatns {
 	THREAD_LINE_BUFFER_SIZE = 2048,
 	THREAD_POLL_FREQ = 5 * AMTIME_MSEC,
+	BLOCK_POLL_FREQ = 2 * AMTIME_MSEC,
 };
 
 struct amlog_sink {
@@ -39,6 +40,8 @@ typedef struct log_thread {
 
 /* TODO: Locks? */
 
+static ambool_t abort_on_error = am_false;
+static ambool_t block_on_error = am_false;
 static log_thread_t* log_thread = NULL;
 static amlist_t direct_sinks = { .next = &direct_sinks, .prev = &direct_sinks};
 static amlist_t queued_sinks = { .next = &queued_sinks, .prev = &queued_sinks};
@@ -145,6 +148,50 @@ void amlog_sink_unregister(amlog_sink_t* sink)
 	}
 }
 
+amrc_t amlog_sink_dequeue(amlog_sink_t* sink, amlog_line_t** ent)
+{
+	static struct timespec block_delay = { .tv_sec = 0, .tv_nsec = BLOCK_POLL_FREQ};
+	amrc_t rc;
+
+	while (1) {
+		rc = amcqueue_deq(sink->out_queue, (void**)ent);
+		if (rc == AMRC_SUCCESS)
+			return rc;
+		if (abort_on_error)
+			abort();
+		if (block_on_error) {
+			nanosleep(&block_delay, NULL);
+			continue;
+		}
+
+		break;
+	}
+
+	return AMRC_ERROR;
+}
+
+amrc_t amlog_sink_enqueue(amlog_sink_t* sink, amlog_line_t* ent)
+{
+	static struct timespec block_delay = { .tv_sec = 0, .tv_nsec = BLOCK_POLL_FREQ};
+	amrc_t rc;
+
+	while (1) {
+		rc = amcqueue_enq(sink->in_queue, ent);
+		if (rc == AMRC_SUCCESS)
+			return rc;
+		if (abort_on_error)
+			abort();
+		if (block_on_error) {
+			nanosleep(&block_delay, NULL);
+			continue;
+		}
+
+		break;
+	}
+
+	return AMRC_ERROR;
+}
+
 amrc_t amlog_sink_message(const char* file, const char* function, int line, uint64_t level, uint64_t mask, const char *fmt, ...)
 {
 	int formatted = 0;
@@ -170,6 +217,8 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 			continue;
 		if (sink->level < ent.level)
 			continue;
+
+		/* Need to send it out. Make sure it's formatted */
 		if (!formatted) {
 			ent.timestamp = amtime_now();
 			va_start(ap, fmt);
@@ -181,12 +230,12 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 			formatted = 1;
 		}
 
-		rc = amcqueue_deq(sink->out_queue, (void**)&queued_ent);
+		rc = amlog_sink_dequeue(sink, &queued_ent);
 		if (rc != AMRC_SUCCESS)
 			continue;
 
 		memcpy(queued_ent, &ent, sizeof(ent));
-		rc = amcqueue_enq(sink->in_queue, queued_ent);
+		rc = amlog_sink_enqueue(sink, queued_ent);
 		if (rc != AMRC_SUCCESS)
 			continue;
 	}
@@ -260,6 +309,11 @@ amrc_t amlog_sink_init(amlog_flags_t flags)
 {
 	int i;
 	amrc_t rc;
+
+	if ((flags & AMLOG_FLAGS_BLOCK_ON_ERROR) && (flags & AMLOG_FLAGS_BLOCK_ON_ERROR))
+		return AMRC_ERROR;
+	abort_on_error = !!(flags & AMLOG_FLAGS_ABORT_ON_ERROR);
+	block_on_error = !!(flags & AMLOG_FLAGS_BLOCK_ON_ERROR);
 
 	if (flags & AMLOG_FLAGS_USE_THREAD) {
 		assert(log_thread == NULL);
