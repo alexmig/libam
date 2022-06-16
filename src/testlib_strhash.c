@@ -159,7 +159,7 @@ static amrc_t check_no_growth()
 	amstrhash_t* hash;
 	amstrhash_attr_t attr;
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = 2;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = NULL;
@@ -220,7 +220,7 @@ static amrc_t check_overwrite()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = on_delete_callback;
@@ -284,7 +284,7 @@ static amrc_t check_no_overwrite()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = on_delete_callback;
@@ -349,7 +349,7 @@ static amrc_t check_free_cb()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = on_delete_callback;
@@ -407,7 +407,7 @@ static amrc_t check_no_free_cb()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = on_delete_callback;
@@ -465,7 +465,7 @@ static amrc_t check_no_dup_keys()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = NULL;
@@ -504,7 +504,7 @@ static amrc_t check_insert_find_delete()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 5;
 	attr.on_delete = NULL;
@@ -548,7 +548,7 @@ static amrc_t check_insert_find_delete_key()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = NULL;
@@ -596,7 +596,7 @@ static amrc_t check_value_replace()
 
 	on_delete_callback_init();
 
-	attr.bucket_threashold = 3;
+	attr.bucket_threashold = UINT64_MAX;
 	attr.percent_threashold = 100;
 	attr.free_size = 0;
 	attr.on_delete = NULL;
