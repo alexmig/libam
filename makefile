@@ -22,7 +22,22 @@ library_tests := ${library_tests_sources:${source_dir}/%.c=%}
 
 # ==== library
 libraries += libam
-objects.libam = libam_cqueue.o  libam_fdopers.o  libam_time.o libam_opts.o  libam_stats.o  libam_tree.o libam_itree.o libam_hash.o libam_stack.o libam_lstack.o libam_pool.o libam_log.o libam_strhash.o
+objects.libam = \
+	libam_cqueue.o \
+	libam_fdopers.o \
+	libam_time.o \
+	libam_opts.o \
+	libam_stats.o \
+	libam_tree.o \
+	libam_itree.o \
+	libam_hash.o \
+	libam_stack.o \
+	libam_lstack.o \
+	libam_pool.o \
+	libam_log.o \
+	libam_strhash.o \
+	libam_thread_pool.o
+
 -include ${objects.libam:%.o=${build_dir}/%.d} # Include auto-generated dependencies.
 
 CXX.gcc := g++
@@ -68,9 +83,9 @@ LDFLAGS.release :=
 LDFLAGS := ${LDFLAGS.${BUILD}}
 LDLIBS := -lpthread
 
-COMPILE.CXX = ${CXX} -c -o $@ ${CPPFLAGS} -MD -MP ${CXXFLAGS} $(abspath $<)
-PREPROCESS.CXX = ${CXX} -E -o $@ ${CPPFLAGS} ${CXXFLAGS} $(abspath $<)
-COMPILE.C = ${CC} -fpic -c -o $@ ${CPPFLAGS} -MD -MP ${CFLAGS} $(abspath $<)
+COMPILE.CXX = ${CXX} -c -o $@ ${CPPFLAGS} -MD -MP ${CXXFLAGS} $<
+PREPROCESS.CXX = ${CXX} -E -o $@ ${CPPFLAGS} ${CXXFLAGS} $<
+COMPILE.C = ${CC} -fpic -c -o $@ ${CPPFLAGS} -MD -MP ${CFLAGS} $<
 LINK.EXE = ${LD} -o $@ $(LDFLAGS) $(filter-out makefile,$^) $(LDLIBS)
 LINK.SO = ${LD} -fpic -shared -o $@.so $(LDFLAGS) $(filter-out makefile,$^) $(LDLIBS)
 LINK.A = ${AR} -rcs $@.a $(filter-out makefile,$^)

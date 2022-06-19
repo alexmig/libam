@@ -45,4 +45,9 @@ amrc_t amstack_push(amstack_t* stk, void* data);
  */
 amrc_t amstack_pop(amstack_t* stk, void** data);
 
+/**
+ * Returns current stack size
+ */
+uint64_t amstack_get_size(amstack_t* stk);
+
 #endif

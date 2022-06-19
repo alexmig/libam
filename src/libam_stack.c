@@ -98,3 +98,11 @@ amrc_t amstack_pop(amstack_t* stk, void** data)
 	*data = ptr;
 	return AMRC_SUCCESS;
 }
+
+/**
+ * Returns current stack size
+ */
+uint64_t amstack_get_size(amstack_t* stk)
+{
+	return stk->size;
+}

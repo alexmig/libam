@@ -73,6 +73,7 @@ static inline void amstat_add(amstat_range_t* to, amstat_range_t* from)
 		from->ss /= 2;
 	}
 
+	to->ss += from->ss;
 	to->sum += from->sum;
 	to->num += from->num;
 	to->avg = (to->num == 0 ? 0 : to->sum / to->num);

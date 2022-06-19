@@ -8,6 +8,14 @@
 #include <libam/libam_cqueue.h>
 #include <libam/libam_replace.h>
 
+typedef enum amlog_level { /* Suggested log levels */
+	AMLOG_DEBUG = 10,
+	AMLOG_INFO = 7,
+	AMLOG_WARNING = 3,
+	AMLOG_ERROR = 1,
+	AMLOG_CRITICAL = 0,
+} amlog_level_t;
+
 typedef enum amlog_flags {
 	AMLOG_FLAGS_NONE = 0,
 	AMLOG_FLAGS_USE_THREAD		= 1 << 0, /* This will offload all direct callbacks to thread(s).
