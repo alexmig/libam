@@ -61,7 +61,7 @@ static object_t all_objects[OBJECTS];
 static volatile uint64_t free_objects = OBJECTS;
 static volatile uint64_t used_objects = 0;
 static volatile uint64_t seq = 0;
-static volatile uint64_t opseq = 0;
+//static volatile uint64_t opseq = 0;
 static volatile uint64_t allocated_size = 0;
 
 

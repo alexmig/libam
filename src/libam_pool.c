@@ -419,23 +419,29 @@ static uint64_t ampool_op_get_size(ampool_t* ops)
 /* Frees a pool without locking the hierarchy mutex. */
 static void _ampool_pool_free(ampool_internal_t* pool)
 {
-	uint64_t deleted_size = 0;
-	uint64_t deleted_count = 0;
 	ampool_bucket_t* bucket;
 	uint64_t i;
+#ifdef DEBUG
+	uint64_t deleted_size = 0;
+	uint64_t deleted_count = 0;
+#endif
 
 	amlist_del(&pool->sibling_link); /* Sever top-down chain, now only tracable botom-up */
 
 	/* Free all fixed buckets */
 	for (i = 0; i < ARRAY_SIZE(pool->steps); i++) {
 		bucket = &pool->steps[i];
+#ifdef DEBUG
 		deleted_size += bucket->stats.used_size;
 		deleted_count += bucket->stats.used_element_count;
+#endif
 		bucket_term(bucket, !!(pool->flags & AMPOOL_VALIDATE_ON_FREE));
 	}
 	bucket = &pool->oversized;
+#ifdef DEBUG
 	deleted_size += bucket->stats.used_size;
 	deleted_count += bucket->stats.used_element_count;
+#endif
 	bucket_term(bucket, !!(pool->flags & AMPOOL_VALIDATE_ON_FREE));
 
 	/* Free all sub-pools */
@@ -445,8 +451,10 @@ static void _ampool_pool_free(ampool_internal_t* pool)
 		_ampool_pool_free(subpool);
 	}
 
+#ifdef DEBUG
 	assert(deleted_size == pool->size);
 	assert(deleted_count == pool->element_count);
+#endif
 
 	free(pool);
 }

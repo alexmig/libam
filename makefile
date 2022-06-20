@@ -2,7 +2,7 @@
 # https://stackoverflow.com/questions/48791883/best-practice-for-building-a-make-file
 
 all : # The canonical default target.
-COMPILER=gcc
+COMPILER := gcc
 BUILD := debug
 include_dir := include
 source_dir := src
@@ -60,7 +60,7 @@ CFLAGS.gcc.debug := -g -Og -DDEBUG
 CFLAGS.gcc.release := -O3 -DNDEBUG
 CFLAGS.gcc := ${CFLAGS.gcc.all} ${CFLAGS.gcc.${BUILD}}
 
-CFLAGS.clang.all := -std=gnu17 -W{all,extra,error} -I ${include_dir} -pthread
+CFLAGS.clang.all := -std=gnu17 -Wall -Wextra -Werror -I ${include_dir} -pthread
 CFLAGS.clang.debug := -g -Og -DDEBUG
 CFLAGS.clang.release := -O3 -DNDEBUG
 CFLAGS.clang := ${CFLAGS.clang.all} ${CFLAGS.clang.${BUILD}}
