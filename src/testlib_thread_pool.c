@@ -372,10 +372,7 @@ static void init_cpu_array(uint64_t* cpu_number_array, uint64_t array_len)
 		procs = 2;
 
 	add_cpu_number(cpu_number_array, array_len, 1);
-	add_cpu_number(cpu_number_array, array_len, 2);
-	add_cpu_number(cpu_number_array, array_len, procs - 1);
 	add_cpu_number(cpu_number_array, array_len, procs);
-	add_cpu_number(cpu_number_array, array_len, procs + 1);
 	add_cpu_number(cpu_number_array, array_len, procs * 2);
 }
 

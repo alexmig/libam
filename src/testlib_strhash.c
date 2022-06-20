@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 
 #ifdef NDEBUG
 #define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
@@ -655,7 +656,7 @@ enum {
 	MAX_THREADS = 5,
 	MIN_THREADS = 1,
 	OBJECTS_PER_LIST = 1024,
-	OPERATIONS = OBJECTS_PER_LIST * 8192,
+	OPERATIONS = OBJECTS_PER_LIST * 1024,
 };
 
 typedef enum state {
@@ -862,6 +863,9 @@ static void run_threaded_test(uint64_t thread_num)
 	amstrhash_t* hash;
 	threadlist_t tlist;
 
+	if (thread_num > MAX_THREADS)
+		return;
+
 	hash = amstrhash_init(8, LIBAM_STRHASH_FLAG_USE_LOCK, NULL);
 
 	init_threadlist(&tlist, hash, thread_func, thread_num);
@@ -872,10 +876,51 @@ static void run_threaded_test(uint64_t thread_num)
 	amstrhash_term(hash);
 }
 
+
+static void add_cpu_number(uint64_t* cpu_number_array, uint64_t array_len, uint64_t ent)
+{
+	while (1) {
+		assert(array_len > 1);
+		if (*cpu_number_array == UINT64_MAX) {
+			*cpu_number_array = ent;
+			return;
+		}
+
+		if (*cpu_number_array == ent)
+			return;
+
+		array_len--;
+		cpu_number_array++;
+	}
+
+	abort();
+}
+
+static void init_cpu_array(uint64_t* cpu_number_array, uint64_t array_len)
+{
+	int procs;
+
+	memset(cpu_number_array, -1, sizeof(*cpu_number_array) * array_len);
+
+	procs = get_nprocs();
+	if (procs <= 2)
+		procs = 2;
+
+	add_cpu_number(cpu_number_array, array_len, 1);
+	add_cpu_number(cpu_number_array, array_len, procs);
+	add_cpu_number(cpu_number_array, array_len, procs * 2);
+	if (procs * 2 > MAX_THREADS)
+		add_cpu_number(cpu_number_array, array_len, MAX_THREADS);
+}
+
 int main()
 {
 	amtime_t start;
+	uint64_t cpu_numbers[10];
+	uint64_t* num_cpu;
 	uint64_t i;
+
+	init_cpu_array(cpu_numbers, ARRAY_SIZE(cpu_numbers));
 
 	start = amtime_now();
 	srandom(start);
@@ -885,11 +930,13 @@ int main()
 
 	check_functional_tests();
 
-	for (i = 0; i < 5; i++) {
-		run_threaded_test(1);
-		run_threaded_test(2);
-		run_threaded_test(3);
-		run_threaded_test(5);
+
+	for (i = 0; i < 2; i++) {
+		num_cpu = cpu_numbers;
+		while (*num_cpu != UINT64_MAX) {
+			run_threaded_test(*num_cpu);
+			num_cpu++;
+		}
 		printf(".");
 		fflush(stdout);
 	}

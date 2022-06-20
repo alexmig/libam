@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 
 #ifdef NDEBUG
 #define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
@@ -16,6 +17,7 @@
 #include "libam/libam_time.h"
 #include "libam/libam_atomic.h"
 #include "libam/libam_lstack.h"
+#include "libam/libam_replace.h"
 
 /**
  * TYPES & CONSTANTS
@@ -23,10 +25,10 @@
  */
 
 enum {
-	MAX_THREADS = 15,
+	MAX_THREADS = 63,
 	MIN_THREADS = 1,
 	STACK_SIZE = 8,
-	WRITE_OBJECTS = MAX_THREADS * STACK_SIZE * 4096, // total amount of objects to write. Each reader thread must accomodate all possible objects
+	WRITE_OBJECTS = MAX_THREADS * STACK_SIZE * 1024, // total amount of objects to write. Each reader thread must accomodate all possible objects
 	RECORD_LENGTH = 15,
 };
 
@@ -94,9 +96,9 @@ void* reader_thread_func(void* data)
 	uint8_t opid;
 	uint64_t ops_done = 0;
 
-	assert((ent->id & 0xF) == ent->id);
-	assert((ent->lid & 0xF) == ent->lid);
-	opid = ((ent->lid & 0xF) << 4) | (ent->id & 0xF);
+	assert((ent->id & 0x3F) == ent->id);
+	assert((ent->lid & 0x3) == ent->lid);
+	opid = ((ent->lid & 0x3) << 6) | (ent->id & 0x3F);
 
 	while (!signal_go); // Bustwait for signal
 	while (ops_done < ent->target_capacity) {
@@ -122,9 +124,9 @@ void* writer_thread_func(void* data)
 	uint8_t opid;
 	uint64_t ops_done = 0;
 
-	assert((ent->id & 0xF) == ent->id);
-	assert((ent->lid & 0xF) == ent->lid);
-	opid = ((ent->lid & 0xF) << 4) | (ent->id & 0xF);
+	assert((ent->id & 0x3F) == ent->id);
+	assert((ent->lid & 0x3) == ent->lid);
+	opid = ((ent->lid & 0x3) << 6) | (ent->id & 0x3F);
 
 	while (!signal_go); // Bustwait for signal
 	while (ops_done < ent->target_capacity) {
@@ -150,9 +152,9 @@ void* meddler_thread_func(void* data)
 	uint64_t ops_done = 0;
 	uint8_t opid;
 
-	assert((ent->id & 0xF) == ent->id);
-	assert((ent->lid & 0xF) == ent->lid);
-	opid = ((ent->lid & 0xF) << 4) | (ent->id & 0xF);
+	assert((ent->id & 0x3F) == ent->id);
+	assert((ent->lid & 0x3) == ent->lid);
+	opid = ((ent->lid & 0x3) << 6) | (ent->id & 0x3F);
 
 	while (!signal_go); // Bustwait for signal
 	while (!signal_stop) {
@@ -192,9 +194,9 @@ static void init_tl(threadlist_t* tl, threadlist_id_t type, run_t func)
 		tl->ents[i].status = 0;
 		tl->ents[i].progress = 0;
 		tl->ents[i].lid = type;
-		assert((tl->ents[i].lid & 0xF) == tl->ents[i].lid);
+		assert((tl->ents[i].lid & 0x3) == tl->ents[i].lid);
 		tl->ents[i].id = i + 1;
-		assert((tl->ents[i].id & 0xF) == tl->ents[i].id);
+		assert((tl->ents[i].id & 0x3F) == tl->ents[i].id);
 		tl->ents[i].target_capacity = 0;
 		tl->ents[i].objects = NULL;
 	}
@@ -377,8 +379,8 @@ static void validate_obj_history(object_t* obj, opcounts_t* opcnt, ambool_t prin
 
 	for (i = 0; i < RECORD_LENGTH; i++) {
 		uint8_t op = obj->record[i];
-		uint8_t optype = (op >> 4) & 0xF;
-		uint8_t thread_id = op & 0xF;
+		uint8_t optype = (op >> 6) & 0x3F;
+		uint8_t thread_id = op & 0x3;
 		if (op == 0)
 			continue;
 		if (optype <= TL_INVALID || optype >= TL_MAX)
@@ -603,37 +605,77 @@ static amrc_t run_single(int n_rds, int n_wrs, int n_mdl)
 	return validate();
 }
 
-static amrc_t run_meddlers(int rds, int wts)
+static amrc_t run_meddlers(uint64_t* num_cpu, int rds, int wts)
 {
 	amrc_t rc = AMRC_SUCCESS;
+	uint64_t* arr = num_cpu;
 
 	rc = rc || run_single(rds, wts, 0);
-	rc = rc || run_single(rds, wts, 1);
-	rc = rc || run_single(rds, wts, 5);
+	while (*arr != UINT64_MAX) {
+		rc = rc || run_single(rds, wts, *arr);
+		arr++;
+	}
 
 	return rc;
 }
 
-static amrc_t run_writers(int rds)
+static amrc_t run_writers(uint64_t* num_cpu, int rds)
 {
 	amrc_t rc = AMRC_SUCCESS;
+	uint64_t* arr = num_cpu;
 
-	rc = rc || run_meddlers(rds, 1);
-	rc = rc || run_meddlers(rds, 5);
-	rc = rc || run_meddlers(rds, 10);
+	while (*arr != UINT64_MAX) {
+		rc = rc || run_meddlers(num_cpu, rds, *arr);
+		arr++;
+	}
 
 	return rc;
 }
 
-static amrc_t run_readers()
+static amrc_t run_readers(uint64_t* num_cpu)
 {
 	amrc_t rc = AMRC_SUCCESS;
+	uint64_t* arr = num_cpu;
 
-	rc = rc || run_writers(1);
-	rc = rc || run_writers(5);
-	rc = rc || run_writers(10);
+	while (*arr != UINT64_MAX) {
+		rc = rc || run_writers(num_cpu, *arr);
+		arr++;
+	}
 
 	return rc;
+}
+
+static void add_cpu_number(uint64_t* cpu_number_array, uint64_t array_len, uint64_t ent)
+{
+	while (1) {
+		assert(array_len > 1);
+		if (*cpu_number_array == UINT64_MAX) {
+			*cpu_number_array = ent;
+			return;
+		}
+
+		if (*cpu_number_array == ent)
+			return;
+
+		array_len--;
+		cpu_number_array++;
+	}
+
+	abort();
+}
+
+static void init_cpu_array(uint64_t* cpu_number_array, uint64_t array_len)
+{
+	int procs;
+
+	memset(cpu_number_array, -1, sizeof(*cpu_number_array) * array_len);
+
+	procs = get_nprocs();
+	if (procs <= 2)
+		procs = 2;
+
+	add_cpu_number(cpu_number_array, array_len, 1);
+	add_cpu_number(cpu_number_array, array_len, procs);
 }
 
 /* Basic idea - Have three groups of threads - Readers, writers, and meddlers
@@ -653,6 +695,9 @@ int main()
 	amrc_t rc;
 	uint64_t i;
 	amtime_t start;
+	uint64_t cpu_numbers[10];
+
+	init_cpu_array(cpu_numbers, ARRAY_SIZE(cpu_numbers));
 
 	rc = globals_init();
 	if (rc != AMRC_SUCCESS)
@@ -662,8 +707,8 @@ int main()
 
 	printf("libam testing of amlstack_t starting.");
 	fflush(stdout);
-	for (i = 0; i < 5; i++) {
-		run_readers();
+	for (i = 0; i < 3; i++) {
+		run_readers(cpu_numbers);
 		printf(".");
 		fflush(stdout);
 	}
