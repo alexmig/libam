@@ -109,7 +109,7 @@ void* amfile_read(const char* filename, uint32_t* length)
 }
 
 
-amrc_t skt_listen(const amskt_addr* _addr, amskt_t* fd)
+amrc_t amskt_listen(const amskt_addr* _addr, amskt_t* fd)
 {
 	amskt_addr addr;
 	int skt = -1;
@@ -177,7 +177,7 @@ close:
 	return AMRC_ERROR;
 }
 
-amrc_t skt_connect(const amskt_addr* addr, amskt_t* fd)
+amrc_t amskt_connect(const amskt_addr* addr, amskt_t* fd)
 {
 	int _fd;
 
@@ -202,7 +202,7 @@ amrc_t skt_connect(const amskt_addr* addr, amskt_t* fd)
 	return AMRC_SUCCESS;
 }
 
-amrc_t skt_accept(const amskt_t server, amskt_t* client)
+amrc_t amskt_accept(const amskt_t server, amskt_t* client)
 {
 	struct sockaddr_in client_name;
 	socklen_t client_name_len = sizeof(client_name);
@@ -220,7 +220,7 @@ amrc_t skt_accept(const amskt_t server, amskt_t* client)
 	return AMRC_SUCCESS;
 }
 
-void skt_disconnect(amskt_t* fd)
+void amskt_disconnect(amskt_t* fd)
 {
 	if (close(*fd) != 0) {
 		DEBUG_PRINT("Failed to disconnect socket %d\n", *fd);
@@ -228,14 +228,9 @@ void skt_disconnect(amskt_t* fd)
 	*fd = -1;
 }
 
-amrc_t skt_port2addr(const sa_family_t fam, uint16_t port, amskt_addr* addr)
+amrc_t amskt_port2addr(const sa_family_t fam, uint16_t port, amskt_addr* addr)
 {
 	assert(addr != NULL);
-
-	if (fam != AF_INET && fam != AF_INET6) {
-		DEBUG_PRINT("Address family %u not supported\n", fam);
-		goto error;
-	}
 
 	if (fam == AF_INET) {
 		if (addr->s4.sin_family != AF_INET && addr->s4.sin_family != AF_UNSPEC) {
@@ -257,13 +252,14 @@ amrc_t skt_port2addr(const sa_family_t fam, uint16_t port, amskt_addr* addr)
 		return AMRC_SUCCESS;
 	}
 
+	DEBUG_PRINT("Address family %u not supported\n", fam);
 error:
 	memset(addr, 0, sizeof(*addr));
 	addr->s.sa_family = AF_UNSPEC;
 	return AMRC_ERROR;
 }
 
-amrc_t skt_str2addr(const char *str, uint16_t port, amskt_addr* addr)
+amrc_t amskt_str2addr(const char *str, uint16_t port, amskt_addr* addr)
 {
 	int rc;
 

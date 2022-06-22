@@ -33,8 +33,8 @@ amrc_t amskt_connect(const amskt_addr* addr, amskt_t* fd);
 amrc_t amskt_listen(const amskt_addr* addr, amskt_t* fd);
 amrc_t amskt_accept(const amskt_t server, amskt_t* client);
 void amskt_disconnect(amskt_t* fd);
-#define amskt_write(skt, buf, len) fd_write((skt), (buf), (len))
-#define amskt_read(skt, buf, len) fd_read((skt), (buf), (len))
+#define amskt_write(skt, buf, len) amfd_write((skt), (buf), (len))
+#define amskt_read(skt, buf, len) amfd_read((skt), (buf), (len))
 
 amrc_t amskt_port2addr(const sa_family_t fam, uint16_t port, amskt_addr* addr);
 amrc_t amskt_str2addr(const char *str, uint16_t port, amskt_addr* addr);
