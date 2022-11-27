@@ -9,6 +9,7 @@
 
 #include "libam/libam_log.h"
 
+#include "libam/libam_replace.h"
 #include "libam/libam_list.h"
 
 
@@ -30,14 +31,15 @@ struct amlog_sink {
 };
 
 typedef struct log_thread {
-	pthread_t		thread;
-	ambool_t		keep_running;
+	pthread_t	thread;
+	ambool_t	keep_running;
 	amcqueue_t* 	in_queue;
 	amcqueue_t* 	out_queue;
 	amlog_line_t	line_buffer[THREAD_LINE_BUFFER_SIZE];
 	amlog_sink_t*	sink;
 } log_thread_t;
 
+static ambool_t use_source_location = am_true;
 static ambool_t abort_on_error = am_false;
 static ambool_t block_on_error = am_false;
 static log_thread_t* log_thread = NULL;
@@ -46,6 +48,20 @@ static pthread_rwlock_t direct_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static amlist_t direct_sinks = { .next = &direct_sinks, .prev = &direct_sinks};
 static pthread_rwlock_t queued_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static amlist_t queued_sinks = { .next = &queued_sinks, .prev = &queued_sinks};
+
+static const char* levels[] = {
+		"CRITICAL",
+		"ERROR",
+		"ERROR",
+		"WARNING",
+		"WARNING",
+		"WARNING",
+		"INFO",
+		"INFO",
+		"INFO",
+		"INFO",
+		"DEBUG"
+};
 
 /* Register a direct sink.
  * A amlog_line_t structure will be passed to callback directly when messages arrive.
@@ -219,9 +235,16 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 
 	ent.level = level;
 	ent.mask = mask;
-	ent.file = file;
-	ent.function = function;
-	ent.line = line;
+	if (use_source_location) {
+		ent.file = file;
+		ent.function = function;
+		ent.line = line;
+	}
+	else {
+		ent.file = "N/A";
+		ent.function = ent.file;
+		ent.line = 0;
+	}
 
 	/* First, push copies of messages to queued handlers */
 	pthread_rwlock_rdlock(&queued_rwlock); /* Until we have a lockless iterable structure... */
@@ -331,10 +354,11 @@ amrc_t amlog_sink_init(amlog_flags_t flags)
 	int i;
 	amrc_t rc;
 
-	if ((flags & AMLOG_FLAGS_BLOCK_ON_ERROR) && (flags & AMLOG_FLAGS_BLOCK_ON_ERROR))
+	if ((flags & AMLOG_FLAGS_BLOCK_ON_ERROR) && (flags & AMLOG_FLAGS_ABORT_ON_ERROR))
 		return AMRC_ERROR;
 	abort_on_error = !!(flags & AMLOG_FLAGS_ABORT_ON_ERROR);
 	block_on_error = !!(flags & AMLOG_FLAGS_BLOCK_ON_ERROR);
+	use_source_location = !(flags & AMLOG_FLAGS_AVOID_SOURCE_LINES);
 
 	if (flags & AMLOG_FLAGS_USE_THREAD) {
 		assert(log_thread == NULL);
@@ -478,14 +502,31 @@ int amlog_dump(const void* buf, int length, char* org_output, int output_length,
 void amlog_sink_dafault_stdout(UNUSED amlog_sink_t* sink, UNUSED void* user_data, const amlog_line_t* line)
 {
 	char buffer[26];
+	char level_buffer[32];
 	time_t time;
 	struct tm *tm;
 	uint64_t usec;
+	const char* level;
 
+	/* time */
 	usec = line->timestamp % AMTIME_SEC;
 	time = line->timestamp / AMTIME_SEC;
 	tm = localtime(&time);
 	strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm);
 
-	fprintf(stdout, "%s.%06lu %lu %lx %.*s", buffer, usec, line->level, line->mask, line->message_length, line->message);
+	/* level */
+	if (line->level < ARRAY_SIZE(levels)) {
+		level = levels[line->level];
+	} else {
+		snprintf(level_buffer, sizeof(level_buffer), "level %lu", line->level);
+		level_buffer[sizeof(level_buffer) - 1] = '\0';
+		level = level_buffer;
+	}
+
+	if (use_source_location) {
+		fprintf(stdout, "%s.%06lu %s:%d %s %.*s", buffer, usec, line->file, line->line, level, line->message_length, line->message);
+	}
+	else {
+		fprintf(stdout, "%s.%06lu %s %.*s", buffer, usec, level, line->message_length, line->message);
+	}
 }

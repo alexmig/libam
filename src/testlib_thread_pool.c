@@ -5,7 +5,9 @@
 #include <sys/sysinfo.h>
 
 #ifdef NDEBUG
-#define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); abort(); }} while(0)
+#include <stdio.h>
+#undef assert
+#define assert(cond) do {if (!(cond)) { fprintf(stderr, "Assertion '" #cond "' failed at %s:%d\n", __FILE__, __LINE__); fflush(stderr); abort(); }} while(0)
 #else
 #include <assert.h>
 #endif

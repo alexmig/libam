@@ -13,7 +13,7 @@
 
 #ifdef DEBUG
 #include "libam/libam_log.h"
-#define DEBUG_PRINT(fmt, args...)	amlog_sink_log(0, 0, fmt, ##args)
+#define DEBUG_PRINT(fmt, args...)	amlog_sink_log(AMLOG_DEBUG, 0, fmt, ##args)
 #else
 #define DEBUG_PRINT(fmt, args...)
 #endif

@@ -10,7 +10,7 @@
 
 typedef enum amlog_level { /* Suggested log levels */
 	AMLOG_DEBUG = 10,
-	AMLOG_INFO = 7,
+	AMLOG_INFO = 6,
 	AMLOG_WARNING = 3,
 	AMLOG_ERROR = 1,
 	AMLOG_CRITICAL = 0,
@@ -19,20 +19,22 @@ typedef enum amlog_level { /* Suggested log levels */
 typedef enum amlog_flags {
 	AMLOG_FLAGS_NONE = 0,
 	AMLOG_FLAGS_USE_THREAD		= 1 << 0, /* This will offload all direct callbacks to thread(s).
-	 	 	 	 	 	 	 	 	 	 	 This also means that logs will be formatted on the spot, rather than on-demand */
-	AMLOG_FLAGS_BLOCK_ON_ERROR	= 1 << 1, /* Instead of failing, block until able to succeed */
-	AMLOG_FLAGS_ABORT_ON_ERROR	= 1 << 2, /* Instead of failing, abort */
+	 	 	 	 	 	 	 This also means that logs will be formatted on the spot, rather than on-demand */
+	AMLOG_FLAGS_AVOID_SOURCE_LINES	= 1 << 1, /* Do not propagate source code location */
+	AMLOG_FLAGS_BLOCK_ON_ERROR	= 1 << 2, /* Instead of failing, block until able to succeed */
+	AMLOG_FLAGS_ABORT_ON_ERROR	= 1 << 3, /* Instead of failing, abort */
+
 } amlog_flags_t;
 
 typedef struct amlog_line {
 	amtime_t	timestamp;	/* Timestamp at time of logging of line */
-	uint64_t	level;	/* Numerical log level of line */
-	uint64_t	mask;	/* Mask of components for log line. Can be 0 */
-	const char* file;	/* Name of file in which log line originated */
-	const char* function;	/* Name of function in which log line originated */
-	int			line;	/* Line number in which log line originated */
+	uint64_t	level;		/* Numerical log level of line */
+	uint64_t	mask;		/* Mask of components for log line. Can be 0 */
+	const char*	file;		/* Name of file in which log line originated */
+	const char*	function;	/* Name of function in which log line originated */
+	int		line;		/* Line number in which log line originated */
 	const char	message[256];	/* Null terminated message to print. May contain newlines. */
-	int			message_length;	/* Length in bytes of message passed, excluding null terminator */
+	int		message_length;	/* Length in bytes of message passed, excluding null terminator */
 } amlog_line_t;
 
 struct amlog_sink;
@@ -110,5 +112,12 @@ int amlog_dump(const void* buf, int length, char* output, int output_length, uin
 
 /* A default log sink that simply outputs lines to STDOUT is supplied here */
 void amlog_sink_dafault_stdout(amlog_sink_t* sink , void* user_data, const amlog_line_t* line);
+
+/* An easy first setup, that still enables performance, would look like the following:
+ * rc = amlog_sink_init(AMLOG_FLAGS_USE_THREAD);
+ * assert(rc == AMRC_SUCCESS);
+ * rc = amlog_sink_register_direct("Default", amlog_sink_dafault_stdout, NULL);
+ * assert(rc == AMRC_SUCCESS);
+ */
 
 #endif /* _LIBAM_LOGSINK_H_ */
