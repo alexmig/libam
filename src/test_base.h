@@ -219,7 +219,7 @@ static void _test_flush_logger(log_queue_t* lq, ambool_t print, ambool_t force_r
 		line = amlist_first_entry(&lq->list, logline_t, link);
 		amlist_del(&line->link);
 		if (print)
-			fprintf(stdout, line->buffer);
+			fprintf(stdout, "%s", line->buffer);
 		free(line);
 	}
 	fflush(stdout);

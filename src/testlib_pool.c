@@ -12,7 +12,9 @@
 #include <assert.h>
 #endif
 
-#include "libam.h"
+#include "libam/libam_time.h"
+#include "libam/libam_replace.h"
+#include "libam/libam_atomic.h"
 #include "libam/libam_pool.h"
 
 /**

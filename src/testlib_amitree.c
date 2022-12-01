@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libam.h"
+#include "libam/libam_time.h"
+#include "libam/libam_tree.h"
+#include "libam/libam_itree.h"
 
 /* This is counting on the fact that amitree_t is a complete copy of the fully-validated amtree_t */
 

@@ -3,7 +3,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "libam.h"
+#include "libam/libam_time.h"
+#include "libam/libam_tree.h"
+
 #define MMAX(a, b) ((a) < (b) ? (b) : (a))
 
 typedef struct amt3t {
