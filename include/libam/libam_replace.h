@@ -23,17 +23,17 @@
 #define __FLSTRING1__(file, line) __FLSTRING2__(file, line)
 #endif
 
-#ifndef __FILENAME__
+#ifndef __FILE_NAME__
 #ifndef __FLSTRING__
 #define __FLSTRING__ __FLSTRING1__(__FILE__, __LINE__)
 #endif
 
-#define __FILENAME__		(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __FILE_NAME__		(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define __LOCATION__		(strrchr(__FLSTRING__, '/') ? strrchr(__FLSTRING__, '/') + 1 : __FLSTRING__)
 
-#else /* __FILENAME__ exists */
+#else /* __FILE_NAME__ exists */
 
-#define __LOCATION__		__FLSTRING1__(__FILENAME__, __LINE__)
+#define __LOCATION__		__FLSTRING1__(__FILE_NAME__, __LINE__)
 #endif
 #endif
 

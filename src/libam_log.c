@@ -222,7 +222,7 @@ amrc_t amlog_sink_enqueue(amlog_sink_t* sink, amlog_line_t* ent)
  * level - Only sinks that are configured to print this level or above will see the message. Set to 0 to always send to all sinks.
  * mask - Only sinks that have at least one component mask in common with this line will see this message. Set to 0 to always send to all sinks.
  * @Returns AMRC_SUCCESS if printed successfully / AMRC_ERROR if failed to format, allocate memory, or queue */
-amrc_t amlog_sink_message(const char* file, const char* function, int line, uint64_t level, uint64_t mask, const char *fmt, ...)
+amrc_t amlog_sink_message(const char* file, int line, uint64_t level, uint64_t mask, const char *fmt, ...)
 {
 	int formatted = 0;
 	amlog_line_t ent;
@@ -237,12 +237,10 @@ amrc_t amlog_sink_message(const char* file, const char* function, int line, uint
 	ent.mask = mask;
 	if (use_source_location) {
 		ent.file = file;
-		ent.function = function;
 		ent.line = line;
 	}
 	else {
 		ent.file = "N/A";
-		ent.function = ent.file;
 		ent.line = 0;
 	}
 

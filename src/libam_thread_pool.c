@@ -10,9 +10,12 @@
 
 #ifdef DEBUG
 #include "libam/libam_log.h"
-#define debug_log(fmt, args...)	amlog_sink_message(__FILENAME__, __FUNCTION__, __LINE__, AMLOG_DEBUG, 0, fmt, ##args)
+#define DEBUG_MASK (1UL << 62)
+#define debug_log(fmt, args...)	amlog_sink_log(AMLOG_DEBUG, DEBUG_MASK, fmt, ##args)
+#define error_log(fmt, args...)	amlog_sink_log(AMLOG_ERROR, DEBUG_MASK, fmt, ##args)
 #else
 #define debug_log(fmt, args...)
+#define error_log(fmt, args...)
 #endif
 
 struct lam_thread_pool {

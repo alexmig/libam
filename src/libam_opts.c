@@ -13,9 +13,13 @@ static int is_problem[UINT8_MAX];
 
 #ifdef DEBUG
 #include "libam/libam_log.h"
-#define DEBUG_PRINT(fmt, args...)	amlog_sink_log(AMLOG_DEBUG, 0, fmt, ##args)
+#define DEBUG_MASK (1UL << 63)
+#define DEBUG_PRINT(fmt, args...)	amlog_sink_log(AMLOG_DEBUG, DEBUG_MASK, fmt, ##args)
+#define ERROR_PRINT(fmt, args...)	amlog_sink_log(AMLOG_ERROR, DEBUG_MASK, fmt, ##args)
+
 #else
 #define DEBUG_PRINT(fmt, args...)
+#define ERROR_PRINT(fmt, args...)
 #endif
 
 void amopts_init(amopt_t* opt, void* structure, amopt_val_t final_validate)
