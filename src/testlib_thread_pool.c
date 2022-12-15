@@ -4,6 +4,13 @@
 #include <stdio.h>
 #include <sys/sysinfo.h>
 
+#include "libam/libam_thread_pool.h"
+
+#include "libam/libam_types.h"
+#include "libam/libam_time.h"
+#include "libam/libam_atomic.h"
+#include "libam/libam_replace.h"
+
 #ifdef NDEBUG
 #include <stdio.h>
 #undef assert
@@ -11,13 +18,6 @@
 #else
 #include <assert.h>
 #endif
-
-#include "libam/libam_thread_pool.h"
-
-#include "libam/libam_types.h"
-#include "libam/libam_time.h"
-#include "libam/libam_atomic.h"
-#include "libam/libam_replace.h"
 
 typedef enum task_flags {
 	FLAG_NONE	= 0 << 0,

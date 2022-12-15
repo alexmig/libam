@@ -18,7 +18,7 @@ enum ampool_constants {
 	AMPOOL_STEP_COUNT = 32,
 	AMPOOL_MAX_STEPPED = AMPOOL_ALIGN * AMPOOL_STEP_COUNT,
 
-	AMPOOL_MAX_VALIDATE = 64, /* Maximum amount of data to validate for free ovjects */
+	AMPOOL_MAX_VALIDATE = 64, /* Maximum amount of data to validate for free objects */
 	AMPOOL_MAX_VALIDATE_HALF = AMPOOL_MAX_VALIDATE / 2,
 	AMPOOL_MAX_MEMSET = 1024,
 };
@@ -42,14 +42,6 @@ typedef struct ampool_bucket {
 
 	ampool_bucket_stats_t stats;
 } ampool_bucket_t;
-
-typedef struct ampool_ops {
-	ampool_alloc_t alloc;
-	ampool_realloc_t realloc;
-	ampool_free_t free;
-	ampool_get_size_t get_size;
-	ampool_pool_free_t pool_free;
-} ampool_ops_t;
 
 typedef struct ampool_internal {
 	/* Buckets */
