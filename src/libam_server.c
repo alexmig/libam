@@ -49,22 +49,13 @@ struct amserver {
 	int		epoll_set[MAX_EVENTS];
 };
 
-static void clean_epoll(amserver_t* srv)
-{
-
-}
-
 
 /* Allocates a server handle
- * intf_count - Number of interfaces specified
- * intf - (const char*) A list of interfaces. Acceptable values:
- * 	"ANY" - If used, must be the only interface in the list.
- * 	"<IP>" - E.g. "127.0.0.1" - A specific IP to bind to and listen on.
- * 		Any failures to bind even one of the addresses provided will abort.
- * 	"<path>" - In the case of AF_UNIX, a path to listen on
- * Returns pointer to server handle.
- */
-amserver_t* srv_alloc(amserver_flags_t flags, uint16_t port, int intf_count, ...)
+ * A server, once started, will launch a thread to accept new connections on a set of sockets.
+ * When a connection arrives, depending on server start, it will either be pushed to a queue,
+ * 	a new thread will be started, or a thread pool will be called.
+ * Returns pointer to server handle / NULL on errors */
+amserver_t* srv_alloc(amserver_flags_t flags)
 {
 	amserver_t* srv;
 	va_list valist;
@@ -87,30 +78,33 @@ amserver_t* srv_alloc(amserver_flags_t flags, uint16_t port, int intf_count, ...
 	srv->should_keep_running = am_false;
 	srv->flags = flags;
 
-	/* Loop over interfaces specified */
-	va_start(valist, intf_count);
-	for (i = 0; i < intf_count; i++) {
-		interface = va_arg(valist, char*);
-
-		rc = amskt_str2addr(interface, port, addr);
-		if (rc == AMRC_SUCCESS) {
-			/* Either IPv4 or IPv6 */
-
-		}
-	}
-	va_end(valist);
-	assert(0);
+	assert(0); // TODO: add epoll mechanism
 
 	return srv;
 }
 
-amrc_t amserver_free(amserver_t* srv)
+/* Frees all associated resources tied to the server handle.
+ * If close_sockets is set, will also close all sockets that have been added to the server. */
+amrc_t amserver_free(amserver_t* srv, ambool_t close_sockets)
 {
 	if (!srv)
 		return AMRC_ERROR;
 	amserver_stop(srv);
+	assert(0); // TODO: add close_sockets code
+	assert(0); // TODO: add epoll cleanup
 	free(srv);
 	return AMRC_SUCCESS;
+}
+
+/* Add a socket to work with when serving.
+ * Socket MUST be a TCP (SOCK_STREAM) socket.
+ * Internally, this will set the server socket to non-blocking mode.
+ * This function cannot be called on a running server, and will fail if used so.
+ * Returns AMRC_SUCCESS / AMRC_ERROR */
+amrc_t amserver_add_socket(amserver_t* srv, amskt_t socket)
+{
+	assert(0); // TODO: Epoll.
+	return AMRC_ERROR;
 }
 
 static void* server_thread_function(void* arg)

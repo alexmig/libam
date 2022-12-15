@@ -20,23 +20,30 @@ typedef enum amserver_flags {
 typedef amrc_t (*amserver_threaded_cb_t)(amskt_t socket, void* data);
 
 /* Allocates a server handle
- * intf - A list of interfaces. Acceptable values:
- * 	"ANY" - Must be the only interface in the list. All other values will be ignored.
- * 	"<IP>" - E.g. "127.0.0.1" - A specific IP to bind to and listen on.
- * 		Any failures to bind even one of the addresses provided will abort.
- * 	"<path>" - In the case of AF_UNIX, a path to listen on
- * Returns pointer to server handle.
- */
-amserver_t* srv_alloc(amserver_flags_t flags, uint16_t port, const char *intf, ...);
-amrc_t amserver_free(amserver_t* srv);
+ * A server, once started, will launch a thread to accept new connections on a set of sockets.
+ * When a connection arrives, depending on server start, it will either be pushed to a queue,
+ * 	a new thread will be started, or a thread pool will be called.
+ * Returns pointer to server handle / NULL on errors */
+amserver_t* srv_alloc(amserver_flags_t flags);
 
-/* This will start the server listening in the backgroud as a separate thread.
+/* Frees all associated resources tied to the server handle.
+ * If close_sockets is set, will also close all sockets that have been added to the server. */
+amrc_t amserver_free(amserver_t* srv, ambool_t close_sockets);
+
+/* Add a socket to work with when serving.
+ * Socket MUST be a TCP (SOCK_STREAM) socket.
+ * Internally, this will set the server socket to non-blocking mode.
+ * This function cannot be called on a running server, and will fail if used so.
+ * Returns AMRC_SUCCESS / AMRC_ERROR */
+amrc_t amserver_add_socket(amserver_t* srv, amskt_t socket);
+
+/* This will start the server listening in the background as a separate thread.
  * New connections will be queued into <connection_queue> as is (convert the pointer into amskt_t).
  * THIS FLUNCTION IS NOT THREAD SAFE
  * Returns AMRC_SUCCESS / AMRC_ERROR if the server is in incompatible state. */
 amrc_t amserver_listen_queued(amserver_t* srv, amcqueue_t* connection_queue);
 
-/* This will start the server listening in the backgroud as a separate thread.
+/* This will start the server listening in the background as a separate thread.
  * New for every new connection a new thread will be started and control handed to to <callback>, along with any custom data.
  * THIS FLUNCTION IS NOT THREAD SAFE
  * Returns AMRC_SUCCESS / AMRC_ERROR if the server is in incompatible state. */
